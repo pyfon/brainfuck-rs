@@ -1,12 +1,11 @@
 mod bf_tape {
 
     pub struct Tape<T> {
-        data: Vec::<T>,
+        data: Vec<T>,
         ptr: usize,
     }
 
     impl<T: Copy + Clone + Default> Tape<T> {
-
         fn allocate_for_ptr(&mut self, ptr_pos: usize) {
             // Ensure Tape.data has at least the size of ptr, resizing if necessary.
             // This function allocates for pos + 1000 to avoid excessive calls to Vec.resize().
@@ -23,7 +22,7 @@ mod bf_tape {
         pub fn new() -> Tape<T> {
             let mut tape = Tape {
                 data: Vec::new(),
-                ptr: 0
+                ptr: 0,
             };
             tape.allocate_for_ptr(0);
             tape
@@ -59,11 +58,9 @@ mod bf_tape {
             // Rewind the tape to 0.
             self.ptr = 0;
         }
-
     }
 
     impl<T: Copy + Clone + Default> FromIterator<T> for Tape<T> {
-
         fn from_iter<A: IntoIterator<Item = T>>(iter: A) -> Self {
             let mut tape = Tape::<T>::new();
             for i in iter {
@@ -73,17 +70,15 @@ mod bf_tape {
             tape.zero();
             tape
         }
-
     }
-
 }
 
 pub mod brainfuck {
+    use crate::bf_tape::Tape;
     use std::fs;
     use std::io;
     use std::io::Read;
     use std::io::Write;
-    use crate::bf_tape::Tape;
 
     pub fn load_program(file: &String) -> Result<Tape<char>, String> {
         // Load program from file or stdin, return program as a Tape of
@@ -92,7 +87,9 @@ pub mod brainfuck {
         // Get program
         let mut input = match fs::read_to_string(file) {
             Ok(input) => input,
-            Err(err) => { return Err(format!("Couldn't read file: {}", err.to_string())); }
+            Err(err) => {
+                return Err(format!("Couldn't read file: {}", err.to_string()));
+            }
         };
 
         // Check program is valid, and load.
@@ -107,15 +104,31 @@ pub mod brainfuck {
         let mut bracket_stack = Vec::<usize>::new();
         loop {
             match program.next() {
-                '>' => { memory.seek(1).unwrap(); },
-                '<' => { memory.seek(-1).unwrap(); },
-                '+' => { memory.set(memory.get().wrapping_add(1)); },
-                '-' => { memory.set(memory.get().wrapping_add_signed(-1)); },
-                '.' => { print_byte_to_stdout(memory.get()).unwrap(); },
-                ',' => { memory.set(get_byte_from_stdin().expect("Couldn't read from stdin")); },
-                '[' => { left_bracket(&mut program, &memory, &mut bracket_stack).unwrap(); },
-                ']' => { right_bracket(&mut program, &memory, &mut bracket_stack).unwrap(); },
-                '\0' => { return Ok(()) }, // End of tape
+                '>' => {
+                    memory.seek(1).unwrap();
+                }
+                '<' => {
+                    memory.seek(-1).unwrap();
+                }
+                '+' => {
+                    memory.set(memory.get().wrapping_add(1));
+                }
+                '-' => {
+                    memory.set(memory.get().wrapping_add_signed(-1));
+                }
+                '.' => {
+                    print_byte_to_stdout(memory.get()).unwrap();
+                }
+                ',' => {
+                    memory.set(get_byte_from_stdin().expect("Couldn't read from stdin"));
+                }
+                '[' => {
+                    left_bracket(&mut program, &memory, &mut bracket_stack).unwrap();
+                }
+                ']' => {
+                    right_bracket(&mut program, &memory, &mut bracket_stack).unwrap();
+                }
+                '\0' => return Ok(()), // End of tape
                 _ => {
                     return Err("Invalid program symbol.");
                 }
@@ -131,7 +144,11 @@ pub mod brainfuck {
         }
     }
 
-    fn left_bracket(program: &mut Tape<char>, memory: &Tape<u8>, bracket_stack: &mut Vec<usize>) -> Result<(), &'static str> {
+    fn left_bracket(
+        program: &mut Tape<char>,
+        memory: &Tape<u8>,
+        bracket_stack: &mut Vec<usize>,
+    ) -> Result<(), &'static str> {
         // Implement the BF [ command. If returns Err if no ] is found.
         let orig_stack_len = bracket_stack.len();
         bracket_stack.push(program.pos());
@@ -142,16 +159,18 @@ pub mod brainfuck {
             match program.next() {
                 '[' => {
                     bracket_stack.push(program.pos());
-                },
+                }
                 ']' => {
-                    bracket_stack.pop().expect("Unexpected empty bracket stack.");
+                    bracket_stack
+                        .pop()
+                        .expect("Unexpected empty bracket stack.");
                     if bracket_stack.len() == orig_stack_len {
                         // We've reached the matching ]
                         return Ok(());
                     }
-                },
+                }
                 '\0' => return Err("Reached end of tape before finding matching ]"),
-                _ => ()
+                _ => (),
             }
         }
     }
@@ -162,7 +181,11 @@ pub mod brainfuck {
         Ok(())
     }
 
-    fn right_bracket(program: &mut Tape<char>, memory: &Tape<u8>, bracket_stack: &mut Vec<usize>) -> Result<(), &'static str> {
+    fn right_bracket(
+        program: &mut Tape<char>,
+        memory: &Tape<u8>,
+        bracket_stack: &mut Vec<usize>,
+    ) -> Result<(), &'static str> {
         // Implement the BF ] command. If returns Err if no [ is found.
         if bracket_stack.len() == 0 {
             return Err("Encountered ] without matching [");
@@ -170,9 +193,10 @@ pub mod brainfuck {
         if memory.get() == 0 {
             bracket_stack.pop();
         } else {
-            program.seek(*bracket_stack.last().unwrap() as i32 - program.pos() as i32).expect("Coudn't seek program tape.");
+            program
+                .seek(*bracket_stack.last().unwrap() as i32 - program.pos() as i32)
+                .expect("Coudn't seek program tape.");
         }
         Ok(())
     }
-
 }
