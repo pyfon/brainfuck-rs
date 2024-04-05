@@ -113,8 +113,8 @@ pub mod brainfuck {
                 '-' => { memory.set(memory.get().wrapping_add_signed(-1)); },
                 '.' => { print_byte_to_stdout(memory.get()).unwrap(); },
                 ',' => { memory.set(get_byte_from_stdin().expect("Couldn't read from stdin")); },
-                '[' => { left_bracket(&mut program, &mut memory, &mut bracket_stack).unwrap(); },
-                ']' => { right_bracket(&mut program, &mut memory, &mut bracket_stack).unwrap(); },
+                '[' => { left_bracket(&mut program, &memory, &mut bracket_stack).unwrap(); },
+                ']' => { right_bracket(&mut program, &memory, &mut bracket_stack).unwrap(); },
                 '\0' => { return Ok(()) }, // End of tape
                 _ => {
                     return Err("Invalid program symbol.");
@@ -131,10 +131,11 @@ pub mod brainfuck {
         }
     }
 
-    fn left_bracket(program: &mut Tape<char>, memory: &mut Tape<u8>, bracket_stack: &mut Vec<usize>) -> Result<(), &'static str> {
+    fn left_bracket(program: &mut Tape<char>, memory: &Tape<u8>, bracket_stack: &mut Vec<usize>) -> Result<(), &'static str> {
         // Implement the BF [ command. If returns Err if no ] is found.
+        let orig_stack_len = bracket_stack.len();
+        bracket_stack.push(program.pos());
         if memory.get() != 0 {
-            bracket_stack.push(program.pos());
             return Ok(());
         }
         loop {
@@ -143,15 +144,16 @@ pub mod brainfuck {
                     bracket_stack.push(program.pos());
                 },
                 ']' => {
-                    if let None = bracket_stack.pop() {
-                        // Matching ] found.
+                    bracket_stack.pop().expect("Unexpected empty bracket stack.");
+                    if bracket_stack.len() == orig_stack_len {
+                        // We've reached the matching ]
                         return Ok(());
                     }
                 },
-                _ => break
+                '\0' => return Err("Reached end of tape before finding matching ]"),
+                _ => ()
             }
         }
-        Err("Couldn't find matching ]")
     }
 
     fn print_byte_to_stdout(byte: u8) -> std::io::Result<()> {
@@ -160,10 +162,10 @@ pub mod brainfuck {
         Ok(())
     }
 
-    fn right_bracket(program: &mut Tape<char>, memory: &mut Tape<u8>, bracket_stack: &mut Vec<usize>) -> Result<(), &'static str> {
+    fn right_bracket(program: &mut Tape<char>, memory: &Tape<u8>, bracket_stack: &mut Vec<usize>) -> Result<(), &'static str> {
         // Implement the BF ] command. If returns Err if no [ is found.
         if bracket_stack.len() == 0 {
-            return Err("Encountered ] without matching [.");
+            return Err("Encountered ] without matching [");
         }
         if memory.get() == 0 {
             bracket_stack.pop();
